@@ -20,28 +20,43 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
-  try {
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
-    console.log("📦 Pinged your deployment. You successfully connected to MongoDB!");
+    try {
+        await client.connect();
+        await client.db("admin").command({ ping: 1 });
+        console.log("📦 Pinged your deployment. You successfully connected to MongoDB!");
 
-    const db = client.db("zapShiftDB"); 
-    const parcelCollection = db.collection("parcels");
+        const db = client.db("zapShiftDB");
+        const parcelCollection = db.collection("parcels");
 
-    // --- YOUR NEW PARCEL ROUTES ---
-    app.get('/api/parcels', async (req, res) => {
-        const result = await parcelCollection.find().toArray();
-        res.send(result);
-    });
 
-    app.post('/api/parcels', async (req, res) => {
-        const result = await parcelCollection.insertOne(req.body);
-        res.send(result);
-    });
 
-  } catch (error) {
-    console.error("❌ Connection Error:", error.message);
-  }
+        // --- YOUR NEW PARCEL ROUTES ---
+        app.get('/parcels', async (req, res) => {
+            const result = await parcelCollection.find().toArray();
+            res.send(result);
+        });
+
+        // In your Node.js index.js
+        app.post('/parcels', async (req, res) => {
+            try {
+                const newParcel = req.body;
+
+                // Ensure price is stored as a number for future calculations
+                newParcel.deliveryCost = parseFloat(newParcel.deliveryCost);
+
+                // Add a server-side timestamp for better sorting/tracking
+                newParcel.createdAt = new Date();
+
+                const result = await parcelCollection.insertOne(newParcel);
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Internal Server Error" });
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Connection Error:", error.message);
+    }
 }
 
 run().catch(console.dir);
